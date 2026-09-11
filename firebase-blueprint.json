@@ -1,0 +1,59 @@
+{
+  "entities": {
+    "Candidate": {
+      "title": "Candidate",
+      "description": "Candidate profile in GEOMETRA - ARGUS including assignments, tasks, subtasks, notes, resources, and history logs.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the candidate"
+        },
+        "name": {
+          "type": "string",
+          "description": "Candidate full name"
+        },
+        "type": {
+          "type": "string",
+          "description": "Candidate technical designation",
+          "enum": ["Technical", "Non-Technical"]
+        },
+        "email": {
+          "type": "string",
+          "description": "Candidate email address"
+        },
+        "notes": {
+          "type": "string",
+          "description": "General profile notes"
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Candidate start or onboarding date (YYYY-MM-DD)"
+        },
+        "resources": {
+          "type": "array",
+          "description": "Candidate-level resources and attachments"
+        },
+        "history": {
+          "type": "array",
+          "description": "Audit and activity log of all actions"
+        },
+        "tasks": {
+          "type": "array",
+          "description": "List of tasks assigned to or involving the candidate"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of creation"
+        }
+      },
+      "required": ["id", "name", "type", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/candidates/{candidateId}": {
+      "schema": "Candidate",
+      "description": "Stores individual candidate documents containing full task breakdown, collaborative subtasks, notes, and activity audit trails."
+    }
+  }
+}

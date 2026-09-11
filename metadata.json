@@ -1,0 +1,6 @@
+{
+  "name": "GEOMETRA - ARGUS",
+  "description": "GEOMETRA - ARGUS: Assignment & Resource Guidance Utility System with collaborative subtasks, deadline scheduling, author-tracked notes, and Google database integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
