@@ -20,17 +20,17 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/30 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
+      <div className="absolute inset-y-0 right-0 max-w-full flex pl-2 sm:pl-10">
         <div className="w-screen max-w-md bg-white border-l border-slate-200 shadow-2xl flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/70">
+          <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 bg-slate-50/70 shrink-0">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-semibold shrink-0">
                 <Activity className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-base font-semibold text-slate-900">System Activity Stream</h2>
-                <p className="text-xs text-slate-500">Live automatic activity history log</p>
+                <h2 className="text-sm sm:text-base font-semibold text-slate-900">System Activity Stream</h2>
+                <p className="text-[11px] sm:text-xs text-slate-500">Live automatic activity history log</p>
               </div>
             </div>
             <button
@@ -44,7 +44,7 @@ export const NotificationDrawer: React.FC<NotificationDrawerProps> = ({ isOpen, 
           </div>
 
           {/* Timeline Feed */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
             {recentActivities.length === 0 ? (
               <div className="text-center py-16 text-slate-400">
                 <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />

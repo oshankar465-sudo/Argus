@@ -28,7 +28,13 @@ import {
   ShieldCheck,
   MessageSquare,
   AlertCircle,
-  BellRing
+  BellRing,
+  Bell,
+  Database,
+  RefreshCw,
+  Loader2,
+  LogOut,
+  CheckCircle2,
 } from 'lucide-react';
 
 export const CandidateProfile: React.FC = () => {
@@ -52,8 +58,18 @@ export const CandidateProfile: React.FC = () => {
     allTasks,
     stats,
     syncTaskToGoogleCalendar,
+    syncSubtaskToGoogleCalendar,
     dispatch72HourNotification,
     stagnant72hTasks,
+    candidateSession,
+    loggedInCandidate,
+    setIsCandidateLoginModalOpen,
+    loginCandidateWithGmail,
+    logoutCandidateSession,
+    syncLoggedInCandidateTasks,
+    verifyMainDatabaseSync,
+    databaseStatus,
+    dbSyncCheckResult,
   } = useArgus();
 
   const candidate = candidates.find((c) => c.id === selectedCandidateId);
@@ -215,6 +231,35 @@ export const CandidateProfile: React.FC = () => {
     generateCandidateDossierReport(candidate);
   };
 
+  const [isSyncingTasks, setIsSyncingTasks] = useState(false);
+  const [isCheckingDb, setIsCheckingDb] = useState(false);
+  const [syncFeedback, setSyncFeedback] = useState<string | null>(null);
+
+  const isCurrentCandidateLoggedIn = candidateSession?.candidateId === candidate.id;
+
+  const handleCandidateSyncAll = async () => {
+    try {
+      setIsSyncingTasks(true);
+      setSyncFeedback(null);
+      const res = await syncLoggedInCandidateTasks();
+      setSyncFeedback(`Successfully synchronized ${res.syncedTasks} task(s) and ${res.syncedSubtasks} subtask milestone(s) to personal Google Calendar & Google Tasks alerts.`);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Sync operation encountered an issue.';
+      setSyncFeedback(msg);
+    } finally {
+      setIsSyncingTasks(false);
+    }
+  };
+
+  const handleVerifyDb = async () => {
+    try {
+      setIsCheckingDb(true);
+      await verifyMainDatabaseSync();
+    } finally {
+      setIsCheckingDb(false);
+    }
+  };
+
   const handleDownloadAuditReport = async () => {
     try {
       setIsGeneratingAuditPdf(true);
@@ -362,6 +407,162 @@ export const CandidateProfile: React.FC = () => {
         </div>
       </div>
 
+      {/* CANDIDATE GMAIL AUTH, CALENDAR & DATABASE SYNC PANEL (ALL-SCREEN RESPONSIVE) */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-2xs transition-colors">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                isCurrentCandidateLoggedIn
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
+              }`}
+            >
+              <Mail className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {isCurrentCandidateLoggedIn
+                    ? 'Candidate Gmail Session Active'
+                    : `Connect ${candidate.name}'s Gmail`}
+                </h3>
+                <span
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                    isCurrentCandidateLoggedIn
+                      ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      isCurrentCandidateLoggedIn ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'
+                    }`}
+                  />
+                  {isCurrentCandidateLoggedIn ? 'Google Workspace Synced' : 'Action Needed'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                {isCurrentCandidateLoggedIn ? (
+                  <>
+                    Logged in as <strong className="text-slate-800 dark:text-slate-200">{candidateSession?.gmailEmail}</strong>. Full Google Calendar access, 72h task alerts, and Google Cloud Firestore database sync active.
+                  </>
+                ) : (
+                  <>
+                    Log in with Gmail to give this candidate direct Google Calendar event scheduling, Google Tasks real-time alerts, and verify live synchronization with the main database.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {isCurrentCandidateLoggedIn ? (
+              <>
+                <button
+                  type="button"
+                  id="candidate-sync-tasks-btn"
+                  onClick={handleCandidateSyncAll}
+                  disabled={isSyncingTasks}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50 min-h-[40px]"
+                >
+                  {isSyncingTasks ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Syncing Calendar & Tasks...</span>
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5" />
+                      <span>Sync Tasks to Calendar & Alerts</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  id="candidate-verify-db-btn"
+                  onClick={handleVerifyDb}
+                  disabled={isCheckingDb}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-lg shadow-2xs transition-all cursor-pointer min-h-[40px]"
+                  title="Verify main database synchronization and ping latency"
+                >
+                  <Database className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span>
+                    {isCheckingDb
+                      ? 'Checking DB...'
+                      : dbSyncCheckResult
+                      ? `DB Synced (${dbSyncCheckResult.latencyMs}ms)`
+                      : 'Check DB Sync'}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  id="candidate-logout-btn"
+                  onClick={logoutCandidateSession}
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer min-h-[40px] min-w-[40px] flex items-center justify-center"
+                  title="Sign out candidate Gmail session"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                id="candidate-start-login-btn"
+                onClick={() => setIsCandidateLoginModalOpen(true)}
+                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 rounded-lg shadow-xs transition-all cursor-pointer min-h-[44px]"
+              >
+                <Mail className="w-4 h-4" />
+                <span>Log In via Gmail & Take Access</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Sync feedback notification banner */}
+        {syncFeedback && (
+          <div className="mt-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 text-xs text-blue-900 dark:text-blue-200 flex items-center justify-between gap-2 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+              <span>{syncFeedback}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncFeedback(null)}
+              className="text-xs text-blue-700 dark:text-blue-300 hover:underline cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Real-time synchronization indicators row */}
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <Calendar className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+            <span className="truncate">
+              Google Calendar: {isCurrentCandidateLoggedIn ? 'Two-Way Event Scheduling' : 'Not Connected'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <Bell className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span className="truncate">
+              Google Tasks Alerts: {isCurrentCandidateLoggedIn ? '72h Inactivity Alerts Enabled' : 'Disabled'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+            <Database className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+            <span className="truncate">
+              Main DB Sync: {databaseStatus === 'connected' ? 'Firestore Live Sync' : databaseStatus}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* INDIVIDUAL CANDIDATE DASHBOARD STATS */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="p-3 bg-white rounded-lg border border-slate-200 shadow-2xs">
@@ -387,12 +588,12 @@ export const CandidateProfile: React.FC = () => {
       </div>
 
       {/* Profile Section Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto no-scrollbar py-0.5">
         <button
           type="button"
           id="tab-tasks-btn"
           onClick={() => setActiveTab('tasks')}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             activeTab === 'tasks'
               ? 'bg-slate-900 text-white'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -409,7 +610,7 @@ export const CandidateProfile: React.FC = () => {
           type="button"
           id="tab-resources-btn"
           onClick={() => setActiveTab('resources')}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             activeTab === 'resources'
               ? 'bg-slate-900 text-white'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -426,7 +627,7 @@ export const CandidateProfile: React.FC = () => {
           type="button"
           id="tab-history-btn"
           onClick={() => setActiveTab('history')}
-          className={`px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer ${
+          className={`shrink-0 px-3.5 py-1.5 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
             activeTab === 'history'
               ? 'bg-slate-900 text-white'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -906,16 +1107,32 @@ export const CandidateProfile: React.FC = () => {
                                         {/* Subtask Schedule Badges (Start Date & Deadline) */}
                                         <div className="flex flex-wrap items-center gap-2.5 text-[11px] text-slate-500 mt-1.5">
                                           {sub.startDate && (
-                                            <span className="flex items-center gap-1 text-slate-600">
+                                            <span className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
                                               <Calendar className="w-3 h-3 text-slate-400" />
                                               Start: {formatDate(sub.startDate)}
                                             </span>
                                           )}
                                           {sub.endDate && (
-                                            <span className="flex items-center gap-1 font-medium text-slate-700 bg-amber-50 border border-amber-200/60 px-1.5 py-0.2 rounded text-[10px]">
-                                              <Clock className="w-3 h-3 text-amber-600" />
+                                            <span className="flex items-center gap-1 font-medium text-slate-700 dark:text-slate-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-900/60 px-1.5 py-0.2 rounded text-[10px]">
+                                              <Clock className="w-3 h-3 text-amber-600 dark:text-amber-400" />
                                               Deadline: {formatDate(sub.endDate)}
                                             </span>
+                                          )}
+
+                                          {/* Subtask Google Calendar Link */}
+                                          {sub.calendarHtmlLink && (
+                                            <a
+                                              href={sub.calendarHtmlLink}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              onClick={(e) => e.stopPropagation()}
+                                              className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-1.5 py-0.2 rounded border border-blue-200 dark:border-blue-800 transition-colors"
+                                              title="Open subtask milestone event in Google Calendar"
+                                            >
+                                              <Calendar className="w-2.5 h-2.5 text-blue-600 dark:text-blue-400" />
+                                              <span>Cal Event</span>
+                                              <ExternalLink className="w-2 h-2" />
+                                            </a>
                                           )}
                                         </div>
 
@@ -958,6 +1175,27 @@ export const CandidateProfile: React.FC = () => {
                                           interactive={true}
                                           size="sm"
                                         />
+
+                                        {/* Subtask Google Calendar Sync Button */}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            syncSubtaskToGoogleCalendar(candidate.id, task.id, sub.id);
+                                          }}
+                                          className={`p-1 rounded transition-colors cursor-pointer ${
+                                            sub.calendarEventId
+                                              ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800'
+                                              : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                                          }`}
+                                          title={
+                                            sub.calendarEventId
+                                              ? 'Milestone synced with Google Calendar. Click to update & re-alert team.'
+                                              : 'Sync subtask milestone & deadline to Google Calendar with alerts'
+                                          }
+                                        >
+                                          <Calendar className="w-3.5 h-3.5" />
+                                        </button>
 
                                         {/* Subtask Notes Toggle Button */}
                                         <button

@@ -86,7 +86,7 @@ export interface Candidate {
   id: string;
   name: string;
   type: CandidateType;
-  email?: string;
+  email: string; // Mandatory email address for calendar invitations and task alerts
   notes?: string;
   startDate?: string; // YYYY-MM-DD (Candidate start / onboarding date)
   resources: Resource[];
@@ -112,3 +112,27 @@ export interface WorkspaceAuthUser {
   email?: string | null;
   photoURL?: string | null;
 }
+
+export interface CandidateAuthSession {
+  candidateId: string;
+  candidateName: string;
+  candidateEmail: string;
+  photoURL?: string | null;
+  loginTime: string;
+  calendarAccessGranted: boolean;
+  tasksAlertsGranted: boolean;
+  dbSyncVerified: boolean;
+  dbLatencyMs?: number;
+  syncedTasksCount?: number;
+}
+
+export interface DbSyncCheckResult {
+  success: boolean;
+  status: 'connected' | 'local' | 'error';
+  databaseId: string;
+  lastChecked: string;
+  recordsCount: number;
+  latencyMs?: number;
+  message: string;
+}
+

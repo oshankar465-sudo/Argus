@@ -14,6 +14,8 @@ import {
   ThemeType,
   EmailModalData,
   WorkspaceAuthUser,
+  CandidateAuthSession,
+  DbSyncCheckResult,
 } from '../types';
 import {
   testFirestoreConnection,
@@ -29,9 +31,12 @@ import {
   signOutWorkspace,
   getWorkspaceAccessToken,
   createGoogleCalendarEvent,
+  createGoogleSubtaskCalendarEvent,
   createGoogleTaskItem,
   updateGoogleCalendarAndTaskCompletion,
   dispatch72HourCalendarNotification,
+  syncAllCandidateTasksAndAlerts,
+  isAuthCancellation,
 } from '../lib/googleWorkspace';
 
 interface ResourceTarget {
@@ -64,9 +69,10 @@ interface ArgusContextType {
   setIsCalendarModalOpen: (open: boolean) => void;
   autoSyncCalendar: boolean;
   setAutoSyncCalendar: (val: boolean) => void;
-  connectGoogleWorkspace: () => Promise<void>;
+  connectGoogleWorkspace: () => Promise<{ success: boolean; cancelled?: boolean; error?: string }>;
   disconnectGoogleWorkspace: () => Promise<void>;
   syncTaskToGoogleCalendar: (candidateId: string, taskId: string) => Promise<void>;
+  syncSubtaskToGoogleCalendar: (candidateId: string, taskId: string, subtaskId: string) => Promise<void>;
   dispatch72HourNotification: (candidateId: string, taskId: string) => Promise<void>;
   simulate72HourInactivity: (taskId: string) => void;
   stagnant72hTasks: Array<{
@@ -88,6 +94,23 @@ interface ArgusContextType {
   databaseMessage: string;
   checkDatabaseConnection: () => Promise<void>;
   syncToGoogleDatabase: () => Promise<void>;
+  dbSyncCheckResult: DbSyncCheckResult | null;
+  verifyMainDatabaseSync: () => Promise<DbSyncCheckResult>;
+
+  // Candidate Gmail Authentication & Portal
+  candidateSession: CandidateAuthSession | null;
+  loggedInCandidate: Candidate | null;
+  isCandidateLoginModalOpen: boolean;
+  setIsCandidateLoginModalOpen: (open: boolean) => void;
+  loginCandidateWithGmail: () => Promise<{
+    success: boolean;
+    candidate?: Candidate;
+    cancelled?: boolean;
+    error?: string;
+  }>;
+  logoutCandidateSession: () => Promise<void>;
+  syncLoggedInCandidateTasks: () => Promise<{ syncedTasks: number; syncedSubtasks: number }>;
+  openCandidatePortal: (candidateId?: string) => void;
 
   // Modals
   isAddCandidateOpen: boolean;
@@ -121,7 +144,7 @@ interface ArgusContextType {
   addCandidate: (data: {
     name: string;
     type: CandidateType;
-    email?: string;
+    email: string;
     notes?: string;
     startDate?: string;
   }) => Candidate;
@@ -130,7 +153,7 @@ interface ArgusContextType {
     data: {
       name: string;
       type: CandidateType;
-      email?: string;
+      email: string;
       notes?: string;
       startDate?: string;
     }
@@ -271,6 +294,7 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
           return parsed.map((c: Candidate) => ({
             ...c,
+            email: c.email || `${c.name.toLowerCase().replace(/[^a-z0-9]/g, '.')}@geometra.io`,
             startDate: c.startDate || c.createdAt.split('T')[0] || undefined,
             tasks: (c.tasks || []).map((t: Task) => ({
               ...t,
@@ -291,7 +315,112 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch {
       // Fallback
     }
-    return [];
+
+    const defaultDeadline = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const initialCandidates: Candidate[] = [
+      {
+        id: 'cand-init-1',
+        name: 'Om Shankar',
+        type: 'Technical',
+        email: 'oshankar465@gmail.com',
+        startDate: new Date().toISOString().split('T')[0],
+        notes: 'Lead engineer overseeing full-stack architecture and integrations.',
+        createdAt: new Date().toISOString(),
+        resources: [],
+        history: [
+          {
+            id: 'log-init-1',
+            timestamp: new Date().toISOString(),
+            action: 'Candidate profile registered: Om Shankar (Technical) • Alert Email: oshankar465@gmail.com',
+            candidateId: 'cand-init-1',
+            type: 'candidate',
+          },
+        ],
+        tasks: [
+          {
+            id: 'task-init-1',
+            candidateId: 'cand-init-1',
+            name: 'API Infrastructure & Database Optimization',
+            description: 'Deploy Firestore database rules, integrate Google Calendar real-time alerts, and test sync.',
+            status: 'In Progress',
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: defaultDeadline,
+            isCollaborative: true,
+            collaboratorIds: ['cand-init-1', 'cand-init-2'],
+            notesList: [
+              {
+                id: 'note-init-1',
+                content: 'Google Calendar sync configured with ?sendUpdates=all for instant notifications.',
+                authorName: 'System Lead',
+                authorRole: 'Admin',
+                createdAt: new Date().toISOString(),
+              },
+            ],
+            resources: [],
+            history: [],
+            createdAt: new Date().toISOString(),
+            lastStatusUpdate: new Date().toISOString(),
+            subtasks: [
+              {
+                id: 'sub-init-1',
+                taskId: 'task-init-1',
+                candidateId: 'cand-init-1',
+                name: 'Audit attendee email validation and schema rules',
+                status: 'Completed',
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: defaultDeadline,
+                isCollaborative: false,
+                collaboratorIds: [],
+                notesList: [],
+                resources: [],
+                history: [],
+                createdAt: new Date().toISOString(),
+              },
+              {
+                id: 'sub-init-2',
+                taskId: 'task-init-1',
+                candidateId: 'cand-init-1',
+                name: 'Verify 72-hour inactivity warning alerts to team inbox',
+                status: 'In Progress',
+                startDate: new Date().toISOString().split('T')[0],
+                endDate: defaultDeadline,
+                isCollaborative: true,
+                collaboratorIds: ['cand-init-1', 'cand-init-2'],
+                notesList: [],
+                resources: [],
+                history: [],
+                createdAt: new Date().toISOString(),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'cand-init-2',
+        name: 'Elena Rostova',
+        type: 'Technical',
+        email: 'elena.rostova@geometra.io',
+        startDate: new Date().toISOString().split('T')[0],
+        notes: 'Frontend and mobile UX specialist.',
+        createdAt: new Date().toISOString(),
+        resources: [],
+        history: [],
+        tasks: [],
+      },
+      {
+        id: 'cand-init-3',
+        name: 'Marcus Vance',
+        type: 'Non-Technical',
+        email: 'marcus.vance@geometra.io',
+        startDate: new Date().toISOString().split('T')[0],
+        notes: 'Project coordinator and partner communications.',
+        createdAt: new Date().toISOString(),
+        resources: [],
+        history: [],
+        tasks: [],
+      },
+    ];
+    return initialCandidates;
   });
 
   const [activeTab, setActiveTab] = useState<ViewTab>('dashboard');
@@ -348,7 +477,11 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => unsubscribe();
   }, []);
 
-  const connectGoogleWorkspace = async () => {
+  const connectGoogleWorkspace = async (): Promise<{
+    success: boolean;
+    cancelled?: boolean;
+    error?: string;
+  }> => {
     try {
       const res = await signInWithGoogleWorkspace();
       if (res) {
@@ -358,10 +491,16 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           photoURL: res.user.photoURL,
         });
         setIsWorkspaceAuthenticated(true);
+        return { success: true };
       }
-    } catch (err) {
+      return { success: false, cancelled: true };
+    } catch (err: unknown) {
+      if (isAuthCancellation(err)) {
+        return { success: false, cancelled: true };
+      }
+      const message = err instanceof Error ? err.message : 'Failed to sign in to Google Workspace.';
       console.error('Failed to sign in to Google Workspace:', err);
-      throw err;
+      return { success: false, error: message };
     }
   };
 
@@ -554,6 +693,296 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  // Candidate Gmail Authentication, Session & Portal State
+  const CANDIDATE_SESSION_KEY = 'argus_candidate_session';
+  const [candidateSession, setCandidateSession] = useState<CandidateAuthSession | null>(() => {
+    try {
+      const saved = localStorage.getItem(CANDIDATE_SESSION_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const loggedInCandidate = useMemo(() => {
+    if (!candidateSession) return null;
+    return candidates.find((c) => c.id === candidateSession.candidateId) || null;
+  }, [candidateSession, candidates]);
+
+  const [isCandidateLoginModalOpen, setIsCandidateLoginModalOpen] = useState(false);
+  const [dbSyncCheckResult, setDbSyncCheckResult] = useState<DbSyncCheckResult | null>(null);
+
+  /**
+   * Verifies the synchronization status and health with the main Google Cloud Firestore database.
+   */
+  const verifyMainDatabaseSync = async (): Promise<DbSyncCheckResult> => {
+    const startTime = performance.now();
+    try {
+      const res = await testFirestoreConnection();
+      const latency = Math.round(performance.now() - startTime);
+      const result: DbSyncCheckResult = {
+        success: res.success,
+        status: res.success ? 'connected' : 'local',
+        databaseId: configInfo.databaseId,
+        lastChecked: new Date().toISOString(),
+        recordsCount: candidates.length,
+        latencyMs: latency,
+        message: res.message,
+      };
+      setDbSyncCheckResult(result);
+      if (res.success) {
+        setDatabaseStatus('connected');
+        setDatabaseMessage(`Connected to Google Cloud Firestore (${configInfo.databaseId})`);
+      } else {
+        setDatabaseStatus('local');
+        setDatabaseMessage(res.message);
+      }
+      return result;
+    } catch (err: unknown) {
+      const latency = Math.round(performance.now() - startTime);
+      const errObj = err as Error;
+      const result: DbSyncCheckResult = {
+        success: false,
+        status: 'error',
+        databaseId: configInfo.databaseId,
+        lastChecked: new Date().toISOString(),
+        recordsCount: candidates.length,
+        latencyMs: latency,
+        message: errObj.message || 'Database connection error',
+      };
+      setDbSyncCheckResult(result);
+      setDatabaseStatus('error');
+      setDatabaseMessage(result.message);
+      return result;
+    }
+  };
+
+  /**
+   * Logs a candidate in through their Gmail (Google Workspace OAuth).
+   * Automatically:
+   * 1. Authorizes full Google Calendar & Google Tasks alerts access.
+   * 2. Verifies sync with the main Firestore database.
+   * 3. Syncs candidate tasks and subtasks to their Google Calendar & Tasks.
+   * 4. Updates their session and sets view to their profile.
+   */
+  const loginCandidateWithGmail = async (): Promise<{
+    success: boolean;
+    candidate?: Candidate;
+    cancelled?: boolean;
+    error?: string;
+  }> => {
+    try {
+      const res = await signInWithGoogleWorkspace();
+      if (!res) {
+        return { success: false, cancelled: true };
+      }
+
+      const rawEmail = res.user.email?.toLowerCase().trim() || '';
+      const displayName = res.user.displayName || 'Candidate';
+      const photoURL = res.user.photoURL;
+      const token = res.accessToken;
+
+      // 1. Verify sync with main Google Cloud Firestore database
+      const dbCheck = await verifyMainDatabaseSync();
+
+      // 2. Locate or auto-register candidate in database
+      let targetCandidate = candidates.find(
+        (c) => c.email && c.email.toLowerCase().trim() === rawEmail
+      );
+
+      if (!targetCandidate) {
+        // Auto-provision candidate in main database
+        const newCandId = `cand-${Date.now()}`;
+        const newCand: Candidate = {
+          id: newCandId,
+          name: displayName,
+          email: rawEmail,
+          type: 'Technical',
+          startDate: new Date().toISOString().split('T')[0],
+          notes: 'Registered via Gmail Single Sign-On with Google Calendar & Tasks alerts authorization.',
+          createdAt: new Date().toISOString(),
+          resources: [],
+          history: [
+            {
+              id: `act-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              action: `Candidate profile registered through Gmail (${rawEmail}) with full calendar and tasks alerts`,
+              candidateId: newCandId,
+              type: 'candidate',
+            },
+          ],
+          tasks: [
+            {
+              id: `task-${Date.now()}`,
+              candidateId: newCandId,
+              name: 'Candidate Welcome & Milestone Setup',
+              description: 'Initial onboarding checklist synchronized with Google Calendar & Google Tasks.',
+              status: 'Started',
+              startDate: new Date().toISOString().split('T')[0],
+              endDate: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().split('T')[0],
+              notesList: [
+                {
+                  id: `note-${Date.now()}`,
+                  content: `Account connected via Gmail (${rawEmail}). Calendar events and 72h status alerts synchronized.`,
+                  authorName: 'System',
+                  authorRole: 'Admin',
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+              subtasks: [
+                {
+                  id: `sub-${Date.now()}-1`,
+                  taskId: `task-${Date.now()}`,
+                  candidateId: newCandId,
+                  name: 'Verify personal Google Calendar invitation & 72h task alerts',
+                  status: 'In Progress',
+                  startDate: new Date().toISOString().split('T')[0],
+                  endDate: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString().split('T')[0],
+                  isCollaborative: false,
+                  collaboratorIds: [],
+                  notesList: [],
+                  resources: [],
+                  history: [],
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+              resources: [],
+              history: [],
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        };
+
+        targetCandidate = newCand;
+        // Save to Firestore main database immediately
+        await saveCandidateToFirestore(newCand);
+        setCandidates((prev) => [newCand, ...prev]);
+      }
+
+      // 3. Take all calendar access and task alerts:
+      // Synchronize all tasks & subtask milestones of this candidate to their Google Calendar & Tasks
+      let syncedCount = 0;
+      if (token && targetCandidate) {
+        try {
+          const syncResult = await syncAllCandidateTasksAndAlerts(
+            token,
+            targetCandidate,
+            candidates
+          );
+          if (syncResult.updatedCandidate) {
+            targetCandidate = syncResult.updatedCandidate;
+            syncedCount = syncResult.syncedTasks + syncResult.syncedSubtasks;
+            setCandidates((prev) =>
+              prev.map((c) => (c.id === targetCandidate!.id ? targetCandidate! : c))
+            );
+            await saveCandidateToFirestore(targetCandidate);
+          }
+        } catch (syncErr) {
+          console.warn('Google Calendar & Tasks auto-sync warning:', syncErr);
+        }
+      }
+
+      // 4. Set candidate session
+      const session: CandidateAuthSession = {
+        candidateId: targetCandidate.id,
+        candidateName: targetCandidate.name,
+        candidateEmail: targetCandidate.email,
+        photoURL,
+        loginTime: new Date().toISOString(),
+        calendarAccessGranted: true,
+        tasksAlertsGranted: true,
+        dbSyncVerified: dbCheck.success,
+        dbLatencyMs: dbCheck.latencyMs,
+        syncedTasksCount: syncedCount,
+      };
+
+      setCandidateSession(session);
+      try {
+        localStorage.setItem(CANDIDATE_SESSION_KEY, JSON.stringify(session));
+      } catch {}
+
+      // Update Workspace auth user
+      setWorkspaceUser({
+        displayName,
+        email: rawEmail,
+        photoURL,
+      });
+      setIsWorkspaceAuthenticated(true);
+
+      // Open their candidate profile directly
+      setSelectedCandidateId(targetCandidate.id);
+      setActiveTab('candidates');
+
+      return { success: true, candidate: targetCandidate };
+    } catch (err: unknown) {
+      if (isAuthCancellation(err)) {
+        return { success: false, cancelled: true };
+      }
+      const message = err instanceof Error ? err.message : 'Candidate Gmail sign-in failed.';
+      console.error('Candidate login error:', err);
+      return { success: false, error: message };
+    }
+  };
+
+  /**
+   * Logs out the current candidate session
+   */
+  const logoutCandidateSession = async () => {
+    setCandidateSession(null);
+    try {
+      localStorage.removeItem(CANDIDATE_SESSION_KEY);
+    } catch {}
+    await signOutWorkspace();
+    setWorkspaceUser(null);
+    setIsWorkspaceAuthenticated(false);
+  };
+
+  /**
+   * Synchronizes the logged-in candidate's tasks to their Google Calendar and Google Tasks
+   */
+  const syncLoggedInCandidateTasks = async (): Promise<{ syncedTasks: number; syncedSubtasks: number }> => {
+    let token = getWorkspaceAccessToken();
+    if (!token) {
+      const loginRes = await loginCandidateWithGmail();
+      if (!loginRes.success) return { syncedTasks: 0, syncedSubtasks: 0 };
+      token = getWorkspaceAccessToken();
+    }
+    if (!token || !loggedInCandidate) {
+      return { syncedTasks: 0, syncedSubtasks: 0 };
+    }
+
+    const syncRes = await syncAllCandidateTasksAndAlerts(
+      token,
+      loggedInCandidate,
+      candidates
+    );
+
+    if (syncRes.updatedCandidate) {
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === loggedInCandidate.id ? syncRes.updatedCandidate : c))
+      );
+      await saveCandidateToFirestore(syncRes.updatedCandidate);
+    }
+
+    return {
+      syncedTasks: syncRes.syncedTasks,
+      syncedSubtasks: syncRes.syncedSubtasks,
+    };
+  };
+
+  /**
+   * Opens candidate portal or modal
+   */
+  const openCandidatePortal = (candidateId?: string) => {
+    const id = candidateId || loggedInCandidate?.id || candidateSession?.candidateId;
+    if (id) {
+      setSelectedCandidateId(id);
+      setActiveTab('candidates');
+    } else {
+      setIsCandidateLoginModalOpen(true);
+    }
+  };
+
   // Helper for generating activity logs
   const createLog = (
     action: string,
@@ -575,13 +1004,14 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const addCandidate = (data: {
     name: string;
     type: CandidateType;
-    email?: string;
+    email: string;
     notes?: string;
     startDate?: string;
   }) => {
     const candidateId = `cand-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const trimmedEmail = data.email.trim();
     const log = createLog(
-      `Candidate profile created: ${data.name} (${data.type})`,
+      `Candidate profile registered: ${data.name.trim()} (${data.type}) • Alert Email: ${trimmedEmail}`,
       candidateId,
       undefined,
       undefined,
@@ -592,7 +1022,7 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       id: candidateId,
       name: data.name.trim(),
       type: data.type,
-      email: data.email?.trim() || undefined,
+      email: trimmedEmail,
       notes: data.notes?.trim() || undefined,
       startDate: data.startDate || new Date().toISOString().split('T')[0],
       resources: [],
@@ -610,20 +1040,30 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     data: {
       name: string;
       type: CandidateType;
-      email?: string;
+      email: string;
       notes?: string;
       startDate?: string;
     }
   ) => {
+    const trimmedEmail = data.email.trim();
     setCandidates((prev) =>
       prev.map((c) => {
         if (c.id !== id) return c;
-        const log = createLog(`Candidate profile updated: ${data.name}`, id, undefined, undefined, 'candidate');
+        const emailChanged = trimmedEmail !== c.email;
+        const log = createLog(
+          emailChanged
+            ? `Candidate profile updated: ${data.name} (Alert email changed to ${trimmedEmail})`
+            : `Candidate profile updated: ${data.name}`,
+          id,
+          undefined,
+          undefined,
+          'candidate'
+        );
         return {
           ...c,
           name: data.name.trim(),
           type: data.type,
-          email: data.email?.trim() || undefined,
+          email: trimmedEmail,
           notes: data.notes?.trim() || undefined,
           startDate: data.startDate || c.startDate,
           history: [log, ...c.history],
@@ -730,12 +1170,18 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     // Auto Google Calendar & Tasks sync on assignment if authenticated and auto-sync is on
     const token = getWorkspaceAccessToken();
     if (token && autoSyncCalendar) {
+      const assignedEmails = assignedCandidates
+        .map((c) => c.email)
+        .filter((em): em is string => !!em && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim()));
+
       createGoogleCalendarEvent(token, {
         title: data.name.trim(),
         description: data.description?.trim(),
         startDate: data.startDate,
         endDate: data.endDate,
         candidateName: assignedNames.join(', ') || 'Candidate',
+        assigneeNames: assignedNames,
+        attendeeEmails: assignedEmails,
       })
         .then(async (calRes) => {
           let googleTaskId: string | undefined;
@@ -775,6 +1221,16 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     const targetTask = cand.tasks.find((t) => t.id === taskId);
     if (!targetTask) return;
 
+    // Collect all assigned candidates (single candidate or collaborative team)
+    const assigneeIds = targetTask.isCollaborative && targetTask.collaboratorIds?.length
+      ? targetTask.collaboratorIds
+      : [candidateId];
+    const assigneeCandidates = candidates.filter((c) => assigneeIds.includes(c.id));
+    const assigneeNames = assigneeCandidates.map((c) => c.name);
+    const attendeeEmails = assigneeCandidates
+      .map((c) => c.email)
+      .filter((em): em is string => !!em && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim()));
+
     try {
       const calRes = await createGoogleCalendarEvent(token, {
         title: targetTask.name,
@@ -782,12 +1238,14 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         startDate: targetTask.startDate,
         endDate: targetTask.endDate,
         candidateName: cand.name,
+        assigneeNames: assigneeNames.length > 0 ? assigneeNames : [cand.name],
+        attendeeEmails,
       });
 
       let googleTaskId: string | undefined;
       try {
         const taskRes = await createGoogleTaskItem(token, {
-          title: `${targetTask.name} (${cand.name})`,
+          title: `${targetTask.name} (${assigneeNames.join(', ') || cand.name})`,
           notes: targetTask.description,
           dueDate: targetTask.endDate,
         });
@@ -802,8 +1260,11 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         googleTaskId,
       });
 
+      const alertNotice = attendeeEmails.length > 0
+        ? `Alerts & 72h reminders routed to: ${attendeeEmails.join(', ')}`
+        : `Alerts routed to: ${cand.email}`;
       const log = createLog(
-        `Synced to Google Calendar with 72-hour reminders`,
+        `Synced to Google Calendar: ${alertNotice}`,
         candidateId,
         taskId,
         undefined,
@@ -814,6 +1275,67 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       );
     } catch (err: unknown) {
       console.error('Google Calendar sync error:', err);
+      throw err;
+    }
+  };
+
+  const syncSubtaskToGoogleCalendar = async (
+    candidateId: string,
+    taskId: string,
+    subtaskId: string
+  ) => {
+    const token = getWorkspaceAccessToken();
+    if (!token) {
+      setIsCalendarModalOpen(true);
+      return;
+    }
+    const cand = candidates.find((c) => c.id === candidateId);
+    if (!cand) return;
+    const task = cand.tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const subtask = task.subtasks.find((s) => s.id === subtaskId);
+    if (!subtask) return;
+
+    // Collect team members tied to this subtask
+    const teamIds = subtask.isCollaborative && subtask.collaboratorIds?.length
+      ? subtask.collaboratorIds
+      : [candidateId];
+    const teamCandidates = candidates.filter((c) => teamIds.includes(c.id));
+    const collaboratorNames = teamCandidates.map((c) => c.name);
+    const attendeeEmails = teamCandidates
+      .map((c) => c.email)
+      .filter((em): em is string => !!em && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim()));
+
+    try {
+      const calRes = await createGoogleSubtaskCalendarEvent(token, {
+        subtaskName: subtask.name,
+        parentTaskName: task.name,
+        description: subtask.description,
+        startDate: subtask.startDate,
+        endDate: subtask.endDate,
+        candidateName: cand.name,
+        collaboratorNames,
+        attendeeEmails,
+      });
+
+      updateSubtask(candidateId, taskId, subtaskId, {
+        calendarEventId: calRes.eventId,
+        calendarHtmlLink: calRes.htmlLink,
+      });
+
+      const alertStr = attendeeEmails.length > 0 ? ` (Alerted to: ${attendeeEmails.join(', ')})` : '';
+      const log = createLog(
+        `Subtask milestone "${subtask.name}" synced to Google Calendar${alertStr}`,
+        candidateId,
+        taskId,
+        subtaskId,
+        'subtask'
+      );
+      setCandidates((prev) =>
+        prev.map((c) => (c.id === candidateId ? { ...c, history: [log, ...c.history] } : c))
+      );
+    } catch (err) {
+      console.error('Subtask Google Calendar sync error:', err);
       throw err;
     }
   };
@@ -830,13 +1352,23 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (Date.now() - new Date(targetTask.lastStatusUpdate || targetTask.createdAt).getTime()) /
       (1000 * 3600);
 
+    // Collect all assigned candidates (person or team)
+    const assigneeIds = targetTask.isCollaborative && targetTask.collaboratorIds?.length
+      ? targetTask.collaboratorIds
+      : [candidateId];
+    const assigneeCandidates = candidates.filter((c) => assigneeIds.includes(c.id));
+    const recipientEmails = assigneeCandidates
+      .map((c) => c.email)
+      .filter((em): em is string => !!em && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.trim()));
+
     if (token) {
       try {
         await dispatch72HourCalendarNotification(token, {
           task: targetTask,
-          candidateName: cand.name,
+          candidateName: assigneeCandidates.map((c) => c.name).join(', ') || cand.name,
           stagnantHours: Math.floor(hoursStagnant),
           recipientEmail: cand.email,
+          recipientEmails,
         });
       } catch (e) {
         console.warn('Calendar notification dispatch notice:', e);
@@ -847,8 +1379,11 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       lastReminderSentAt: nowIso,
     });
 
+    const emailNotice = recipientEmails.length > 0
+      ? `alerted to ${recipientEmails.join(', ')}`
+      : `alerted to ${cand.email}`;
     const log = createLog(
-      `72-Hour Status Inactivity reminder sent to Calendar & Task notification queue`,
+      `72-Hour Status Inactivity reminder sent to Calendar & ${emailNotice}`,
       candidateId,
       taskId,
       undefined,
@@ -1626,6 +2161,7 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         connectGoogleWorkspace,
         disconnectGoogleWorkspace,
         syncTaskToGoogleCalendar,
+        syncSubtaskToGoogleCalendar,
         dispatch72HourNotification,
         simulate72HourInactivity,
         stagnant72hTasks,
@@ -1642,6 +2178,18 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         databaseMessage,
         checkDatabaseConnection,
         syncToGoogleDatabase,
+        dbSyncCheckResult,
+        verifyMainDatabaseSync,
+
+        // Candidate Gmail Authentication & Portal
+        candidateSession,
+        loggedInCandidate,
+        isCandidateLoginModalOpen,
+        setIsCandidateLoginModalOpen,
+        loginCandidateWithGmail,
+        logoutCandidateSession,
+        syncLoggedInCandidateTasks,
+        openCandidatePortal,
 
         isAddCandidateOpen,
         setIsAddCandidateOpen,

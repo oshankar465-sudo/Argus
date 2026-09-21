@@ -137,40 +137,40 @@ export const GlobalSearchModal: React.FC = () => {
   const totalHits = results.candidates.length + results.tasks.length + results.subtasks.length + results.resources.length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-4 sm:pt-20 p-2 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[88vh]"
         role="dialog"
         aria-modal="true"
       >
         {/* Search Input Bar */}
-        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-200">
-          <Search className="w-5 h-5 text-slate-400 shrink-0" />
+        <div className="flex items-center gap-2.5 px-3.5 py-3 sm:px-4 sm:py-3.5 border-b border-slate-200 dark:border-slate-800 shrink-0">
+          <Search className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400 shrink-0" />
           <input
             ref={inputRef}
             type="text"
             id="global-search-input"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search candidates, tasks, subtasks, or attached resources... (Esc to close)"
-            className="w-full text-sm text-slate-900 bg-transparent focus:outline-none placeholder:text-slate-400"
+            placeholder="Search candidates, tasks, resources... (Esc)"
+            className="w-full text-xs sm:text-sm text-slate-900 dark:text-slate-100 bg-transparent focus:outline-none placeholder:text-slate-400"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery('')}
-              className="p-1 text-slate-400 hover:text-slate-600 rounded"
+              className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
           )}
-          <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 border border-slate-200 rounded">
+          <span className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded">
             ESC
           </span>
         </div>
 
         {/* Results Container */}
-        <div className="max-h-[60vh] overflow-y-auto p-3 space-y-4">
+        <div className="max-h-[60vh] sm:max-h-[65vh] overflow-y-auto p-2.5 sm:p-3 space-y-4">
           {totalHits === 0 && query ? (
             <div className="text-center py-10">
               <Search className="w-8 h-8 text-slate-300 mx-auto mb-2" />

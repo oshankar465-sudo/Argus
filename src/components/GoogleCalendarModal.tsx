@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useArgus } from '../context/ArgusContext';
+import { isAuthCancellation } from '../lib/googleWorkspace';
 import {
   X,
   Calendar,
@@ -13,6 +14,8 @@ import {
   LogOut,
   Bell,
   ListTodo,
+  Info,
+  AlertCircle,
 } from 'lucide-react';
 
 export const GoogleCalendarModal: React.FC = () => {
@@ -36,15 +39,37 @@ export const GoogleCalendarModal: React.FC = () => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [syncingTaskId, setSyncingTaskId] = useState<string | null>(null);
   const [remindingTaskId, setRemindingTaskId] = useState<string | null>(null);
+  const [authNotice, setAuthNotice] = useState<{
+    type: 'info' | 'error';
+    message: string;
+  } | null>(null);
 
   if (!isCalendarModalOpen) return null;
 
   const handleConnect = async () => {
     setIsConnecting(true);
+    setAuthNotice(null);
     try {
-      await connectGoogleWorkspace();
-    } catch (e) {
-      console.error('Connection error:', e);
+      const res = await connectGoogleWorkspace();
+      if (res.cancelled) {
+        setAuthNotice({
+          type: 'info',
+          message: 'Sign-in window was closed. Click "Sign in with Google" when you are ready to link your account.',
+        });
+      } else if (res.error) {
+        setAuthNotice({
+          type: 'error',
+          message: res.error,
+        });
+      } else if (res.success) {
+        setAuthNotice(null);
+      }
+    } catch (e: unknown) {
+      if (!isAuthCancellation(e)) {
+        const errorMsg = e instanceof Error ? e.message : 'Connection error occurred.';
+        setAuthNotice({ type: 'error', message: errorMsg });
+        console.error('Connection error:', e);
+      }
     } finally {
       setIsConnecting(false);
     }
@@ -69,23 +94,23 @@ export const GoogleCalendarModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
               <Calendar className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 Google Calendar & Tasks Synchronization
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
                 Automatic project scheduling and 72-hour status inactivity monitoring
               </p>
             </div>
@@ -100,7 +125,7 @@ export const GoogleCalendarModal: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-6 text-xs">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-xs">
           {/* Connection Status Box */}
           <div
             className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
@@ -194,6 +219,34 @@ export const GoogleCalendarModal: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Authentication Status Notice Banner */}
+          {authNotice && (
+            <div
+              className={`p-3.5 rounded-xl border flex items-start gap-3 transition-colors ${
+                authNotice.type === 'info'
+                  ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900/60 text-blue-800 dark:text-blue-300'
+                  : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-900/60 text-rose-800 dark:text-rose-300'
+              }`}
+            >
+              {authNotice.type === 'info' ? (
+                <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 text-xs">
+                <p className="font-medium">{authNotice.message}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAuthNotice(null)}
+                className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
 
           {/* Configuration / Automation Toggles */}
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl p-4 bg-slate-50/50 dark:bg-slate-800/40 space-y-3">

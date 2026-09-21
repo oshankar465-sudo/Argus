@@ -20,6 +20,7 @@ service cloud.firestore {
         data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
         data.name is string && data.name.size() > 0 && data.name.size() <= 200 &&
         (data.type == 'Technical' || data.type == 'Non-Technical') &&
+        (!('email' in data) || (data.email is string && data.email.size() > 3 && data.email.size() <= 256)) &&
         data.createdAt is string && data.createdAt.size() <= 64;
     }
 
@@ -29,6 +30,9 @@ service cloud.firestore {
       allow list: if true;
       allow create: if isValidId(candidateId) &&
         candidateId == incoming().id &&
+        ('email' in incoming()) &&
+        incoming().email is string &&
+        incoming().email.size() > 3 &&
         isValidCandidate(incoming());
       allow update: if isValidId(candidateId) &&
         isValidCandidate(incoming());
@@ -37,7 +41,7 @@ service cloud.firestore {
 
     // Connection Health Verification
     match /test/{docId} {
-      allow get: if isValidId(docId);
+      allow get, create, update, delete: if isValidId(docId);
     }
   }
 }

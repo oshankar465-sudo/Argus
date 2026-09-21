@@ -210,28 +210,28 @@ export const GlobalDashboard: React.FC = () => {
       )}
 
       {/* SECTION 5: EXACT FOUR SUMMARY CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Card 1: Total Tasks */}
         <div
           onClick={() => handleCardClick('All')}
           id="summary-card-total"
-          className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
+          className={`p-3 sm:p-4 rounded-xl border transition-all cursor-pointer select-none ${
             selectedCardFilter === 'All'
-              ? 'bg-white border-slate-900 ring-2 ring-slate-900/10 shadow-xs'
-              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+              ? 'bg-white dark:bg-slate-850 border-slate-900 dark:border-blue-500 ring-2 ring-slate-900/10 dark:ring-blue-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Total Tasks</span>
-            <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center text-slate-700">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Tasks</span>
+            <div className="w-6 h-6 rounded-md bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300">
               <ListTodo className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-slate-900 font-mono">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-mono">
               {stats.totalTasks}
             </span>
-            <span className="text-[11px] text-slate-500">all active</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">all active</span>
           </div>
         </div>
 
@@ -239,23 +239,23 @@ export const GlobalDashboard: React.FC = () => {
         <div
           onClick={() => handleCardClick('Completed')}
           id="summary-card-completed"
-          className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
+          className={`p-3 sm:p-4 rounded-xl border transition-all cursor-pointer select-none ${
             selectedCardFilter === 'Completed'
-              ? 'bg-emerald-50/40 border-emerald-600 ring-2 ring-emerald-600/20 shadow-xs'
-              : 'bg-white border-slate-200 hover:border-emerald-200 hover:bg-slate-50/50'
+              ? 'bg-emerald-50/40 dark:bg-emerald-950/30 border-emerald-600 dark:border-emerald-500 ring-2 ring-emerald-600/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-900 hover:bg-slate-50/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Completed</span>
-            <div className="w-6 h-6 rounded-md bg-emerald-50 text-emerald-700 flex items-center justify-center">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Completed</span>
+            <div className="w-6 h-6 rounded-md bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center">
               <CheckCircle2 className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-emerald-700 font-mono">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-700 dark:text-emerald-400 font-mono">
               {stats.completedTasks}
             </span>
-            <span className="text-[11px] text-slate-500">
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">
               {stats.totalTasks > 0 ? `${Math.round((stats.completedTasks / stats.totalTasks) * 100)}% rate` : '0%'}
             </span>
           </div>
@@ -265,23 +265,23 @@ export const GlobalDashboard: React.FC = () => {
         <div
           onClick={() => handleCardClick('In Progress')}
           id="summary-card-inprogress"
-          className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
+          className={`p-3 sm:p-4 rounded-xl border transition-all cursor-pointer select-none ${
             selectedCardFilter === 'In Progress'
-              ? 'bg-amber-50/40 border-amber-600 ring-2 ring-amber-600/20 shadow-xs'
-              : 'bg-white border-slate-200 hover:border-amber-200 hover:bg-slate-50/50'
+              ? 'bg-amber-50/40 dark:bg-amber-950/30 border-amber-600 dark:border-amber-500 ring-2 ring-amber-600/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-900 hover:bg-slate-50/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">In Progress</span>
-            <div className="w-6 h-6 rounded-md bg-amber-50 text-amber-700 flex items-center justify-center">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">In Progress</span>
+            <div className="w-6 h-6 rounded-md bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 flex items-center justify-center">
               <Clock className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-amber-700 font-mono">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-amber-700 dark:text-amber-400 font-mono">
               {stats.inProgressTasks}
             </span>
-            <span className="text-[11px] text-slate-500">active pipeline</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">pipeline</span>
           </div>
         </div>
 
@@ -289,82 +289,82 @@ export const GlobalDashboard: React.FC = () => {
         <div
           onClick={() => handleCardClick('Not Started')}
           id="summary-card-notstarted"
-          className={`p-4 rounded-xl border transition-all cursor-pointer select-none ${
+          className={`p-3 sm:p-4 rounded-xl border transition-all cursor-pointer select-none ${
             selectedCardFilter === 'Not Started'
-              ? 'bg-zinc-100 border-zinc-500 ring-2 ring-zinc-500/20 shadow-xs'
-              : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50/50'
+              ? 'bg-zinc-100 dark:bg-slate-800 border-zinc-500 dark:border-slate-400 ring-2 ring-zinc-500/20 shadow-xs'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/50'
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-500">Not Started</span>
-            <div className="w-6 h-6 rounded-md bg-zinc-100 text-zinc-600 flex items-center justify-center">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Not Started</span>
+            <div className="w-6 h-6 rounded-md bg-zinc-100 dark:bg-slate-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center">
               <CircleDashed className="w-3.5 h-3.5" />
             </div>
           </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold tracking-tight text-zinc-700 font-mono">
+          <div className="mt-2 sm:mt-3 flex items-baseline gap-2">
+            <span className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-700 dark:text-zinc-300 font-mono">
               {stats.notStartedTasks}
             </span>
-            <span className="text-[11px] text-slate-500">pending action</span>
+            <span className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400">pending</span>
           </div>
         </div>
       </div>
 
       {/* SECTION 6: GLOBAL TASK LIST */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
         {/* Table Controls Header */}
-        <div className="p-4 border-b border-slate-200 bg-slate-50/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <h2 className="text-sm font-semibold text-slate-900">Global Tasks</h2>
-            <span className="text-xs text-slate-500">
-              Showing {filteredTasks.length} of {allTasks.length}
-            </span>
+        <div className="p-3 sm:p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-850/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="flex items-center justify-between sm:justify-start gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Global Tasks</h2>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                ({filteredTasks.length}/{allTasks.length})
+              </span>
+            </div>
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={clearAllFilters}
-                className="text-[11px] font-medium text-slate-600 hover:text-slate-900 hover:underline ml-1"
+                className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline"
               >
-                Reset filters
+                Reset
               </button>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
             {/* Table Search Input */}
-            <div className="relative">
+            <div className="relative w-full sm:w-56">
               <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 id="task-table-search-input"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filter tasks or candidates..."
-                className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-slate-900 w-48 sm:w-56"
+                placeholder="Search tasks..."
+                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-slate-900 dark:focus:ring-blue-500"
               />
             </div>
 
-            {/* Candidate Type Filter */}
-            <div className="flex items-center text-xs">
+            <div className="grid grid-cols-2 sm:flex gap-2">
+              {/* Candidate Type Filter */}
               <select
                 id="dashboard-type-filter"
                 value={candidateTypeFilter}
                 onChange={(e) => setCandidateTypeFilter(e.target.value as any)}
-                className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                className="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900"
               >
                 <option value="All">All Types</option>
                 <option value="Technical">Technical</option>
                 <option value="Non-Technical">Non-Technical</option>
               </select>
-            </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center text-xs">
+              {/* Status Filter */}
               <select
                 id="dashboard-status-filter"
                 value={statusDropdownFilter}
                 onChange={(e) => setStatusDropdownFilter(e.target.value)}
-                className="px-2.5 py-1.5 text-xs border border-slate-200 rounded-lg bg-white text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                className="w-full px-2.5 py-1.5 text-xs border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-900"
               >
                 <option value="All">All Statuses</option>
                 <option value="No Status">No Status</option>
@@ -376,8 +376,123 @@ export const GlobalDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Global Task Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile Task Cards List (< md viewports) */}
+        <div className="block md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+          {filteredTasks.length === 0 ? (
+            <div className="py-12 px-4 text-center text-slate-400">
+              <ListTodo className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                {candidates.length === 0 ? 'No candidates or tasks registered yet' : 'No tasks match the filter criteria.'}
+              </p>
+              {candidates.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsAddCandidateOpen(true)}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-slate-900 dark:bg-blue-600 rounded-lg shadow-xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Add Candidate</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredTasks.map((t) => {
+              const completedSubtasks = t.subtasks.filter((s) => s.status === 'Completed').length;
+              const totalSubtasks = t.subtasks.length;
+              const totalResources = t.resources.length;
+
+              return (
+                <div
+                  key={`mobile-${t.id}`}
+                  onClick={() => navigateToCandidateTask(t.candidateId, t.id)}
+                  className="p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 active:bg-slate-100 dark:active:bg-slate-800 transition-colors cursor-pointer space-y-2.5"
+                >
+                  {/* Top Row: Task Name, Collab, Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-xs text-slate-900 dark:text-slate-100 line-clamp-1">
+                          {t.name}
+                        </span>
+                        {t.isCollaborative && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-medium bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                            <Users className="w-2.5 h-2.5" />
+                            <span>Collab</span>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                          {t.candidateName}
+                        </span>
+                        <span className="text-slate-300 dark:text-slate-700">•</span>
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">
+                          {t.candidateType}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="shrink-0">
+                      <StatusBadge status={t.status} size="sm" />
+                    </div>
+                  </div>
+
+                  {/* Middle Row: Progress and Resources */}
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-800/60">
+                    <div className="flex items-center gap-3">
+                      {/* Subtasks */}
+                      {totalSubtasks > 0 ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-12 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div
+                              className="h-full bg-slate-700 dark:bg-blue-500 rounded-full"
+                              style={{ width: `${Math.round((completedSubtasks / totalSubtasks) * 100)}%` }}
+                            />
+                          </div>
+                          <span className="text-[10px] font-mono">{completedSubtasks}/{totalSubtasks} subtasks</span>
+                        </div>
+                      ) : (
+                        <span className="text-[10px]">No subtasks</span>
+                      )}
+
+                      {/* Resources */}
+                      {totalResources > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                          <Paperclip className="w-2.5 h-2.5" />
+                          <span>{totalResources}</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Deadline and Action */}
+                    <div className="flex items-center gap-2">
+                      {t.endDate && (
+                        <span className="text-[10px] font-mono text-slate-600 dark:text-slate-400">
+                          Due {formatDate(t.endDate)}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          generateSingleTaskReport(t, candidates);
+                        }}
+                        className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded"
+                        title="Download Task PDF"
+                      >
+                        <FileDown className="w-3.5 h-3.5" />
+                      </button>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Global Task Table (Desktop md: and above) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50/90 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">

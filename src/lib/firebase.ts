@@ -43,15 +43,29 @@ export const configInfo = {
 };
 
 /**
- * Validates active connection to Google Cloud Firestore by pinging the server
+ * Recursively strips undefined values from an object or array so Firestore setDoc does not reject them
+ */
+export function cleanForFirestore<T>(data: T): T {
+  return JSON.parse(
+    JSON.stringify(data, (_key, value) => (value === undefined ? null : value))
+  );
+}
+
+/**
+ * Validates active connection to Google Cloud Firestore by testing server reachability
  */
 export async function testFirestoreConnection(): Promise<{ success: boolean; message: string }> {
   try {
     const testRef = doc(db, 'test', 'connection');
+    await setDoc(testRef, {
+      status: 'healthy',
+      lastChecked: new Date().toISOString(),
+      databaseId: configInfo.databaseId,
+    });
     await getDocFromServer(testRef);
     return {
       success: true,
-      message: `Successfully connected to Google Cloud Firestore (${configInfo.databaseId})`,
+      message: `Verified live connection & synchronization with Google Cloud Firestore (${configInfo.databaseId})`,
     };
   } catch (error: unknown) {
     const err = error as { code?: string; message?: string };
@@ -104,11 +118,12 @@ export function subscribeToCandidates(
 }
 
 /**
- * Persists a candidate document into Firestore
+ * Persists a candidate document into Firestore with recursive data sanitization
  */
 export async function saveCandidateToFirestore(candidate: Candidate): Promise<void> {
   const candidateRef = doc(db, 'candidates', candidate.id);
-  await setDoc(candidateRef, candidate, { merge: true });
+  const sanitized = cleanForFirestore(candidate);
+  await setDoc(candidateRef, sanitized, { merge: true });
 }
 
 /**

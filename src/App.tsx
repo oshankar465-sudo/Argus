@@ -18,6 +18,7 @@ import { NotificationDrawer } from './components/NotificationDrawer';
 import { GoogleDatabaseModal } from './components/GoogleDatabaseModal';
 import { GoogleCalendarModal } from './components/GoogleCalendarModal';
 import { EmailModal } from './components/EmailModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 
 const AppContent: React.FC = () => {
   const { activeTab, selectedCandidateId } = useArgus();
@@ -29,7 +30,7 @@ const AppContent: React.FC = () => {
       <Header onOpenNotifications={() => setIsNotificationsOpen(true)} />
 
       {/* Main Workspace Canvas */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-24 sm:pb-8">
         {selectedCandidateId ? (
           <CandidateProfile />
         ) : activeTab === 'dashboard' ? (
@@ -42,7 +43,7 @@ const AppContent: React.FC = () => {
       </main>
 
       {/* Subtle Footer */}
-      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 py-4 mt-auto transition-colors">
+      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 bg-white dark:bg-slate-900 py-4 pb-24 sm:pb-4 mt-auto transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-400 dark:text-slate-500">
           <div className="flex items-center gap-2">
             <span className="font-bold text-slate-800 dark:text-slate-200 font-mono tracking-tight">GEOMETRA - ARGUS</span>
@@ -54,6 +55,9 @@ const AppContent: React.FC = () => {
           </div>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation Bar (md:hidden) */}
+      <MobileBottomNav onOpenNotifications={() => setIsNotificationsOpen(true)} />
 
       {/* Global Modals & Drawers */}
       <CandidateModal />

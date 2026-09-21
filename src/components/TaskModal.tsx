@@ -11,7 +11,9 @@ import {
   User,
   AlertCircle,
   FileText,
-  Clock
+  Clock,
+  Mail,
+  Bell
 } from 'lucide-react';
 
 const STATUS_OPTIONS: StatusType[] = [
@@ -258,23 +260,23 @@ export const TaskModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className="w-full max-w-xl bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
         role="dialog"
         aria-modal="true"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50/70 shrink-0">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-850/70 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center text-sm font-semibold">
+            <div className="w-8 h-8 rounded-lg bg-slate-900 dark:bg-blue-600 text-white flex items-center justify-center text-sm font-semibold shrink-0">
               <CheckSquare className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-sm sm:text-base font-semibold text-slate-900 dark:text-slate-100">
                 {isEditing ? 'Edit Task' : 'Create New Task'}
               </h2>
-              <p className="text-xs text-slate-500">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                 Set start date, deadline, scope, and individual or collaborative assignees.
               </p>
             </div>
@@ -283,14 +285,14 @@ export const TaskModal: React.FC = () => {
             type="button"
             id="close-task-modal-btn"
             onClick={handleClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-md transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/60 dark:hover:bg-slate-800 rounded-md transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5 overflow-y-auto">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto">
           {error && (
             <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-500" />
@@ -651,7 +653,7 @@ export const TaskModal: React.FC = () => {
             {/* Single Assignee Mode */}
             {!isCollaborative && (
               <div>
-                <label htmlFor="task-candidate-select" className="block text-xs font-medium text-slate-700 mb-1.5">
+                <label htmlFor="task-candidate-select" className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Assigned Candidate <span className="text-rose-500">*</span>
                 </label>
                 <select
@@ -661,14 +663,14 @@ export const TaskModal: React.FC = () => {
                     setCandidateId(e.target.value);
                     if (error) setError('');
                   }}
-                  className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-slate-900"
+                  className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-blue-500"
                 >
                   {candidates.length === 0 ? (
                     <option value="">No candidates available — add a candidate first</option>
                   ) : (
                     candidates.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name} ({c.type})
+                        {c.name} — {c.email} ({c.type})
                       </option>
                     ))
                   )}
@@ -682,12 +684,12 @@ export const TaskModal: React.FC = () => {
             {/* Collaborative Mode */}
             {isCollaborative && (
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
                   Select Collaborators <span className="text-rose-500">*</span> (Select 2 or more)
                 </label>
-                <div className="border border-slate-300 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1.5 bg-slate-50/50">
+                <div className="border border-slate-300 dark:border-slate-700 rounded-lg p-3 max-h-40 overflow-y-auto space-y-1.5 bg-slate-50/50 dark:bg-slate-850/50">
                   {candidates.length < 2 ? (
-                    <p className="text-xs text-amber-700 py-2 text-center">
+                    <p className="text-xs text-amber-700 dark:text-amber-400 py-2 text-center">
                       Need at least 2 candidates created to form a collaborative group.
                     </p>
                   ) : (
@@ -699,8 +701,8 @@ export const TaskModal: React.FC = () => {
                           onClick={() => toggleCollaborator(cand.id)}
                           className={`flex items-center justify-between p-2 rounded-md text-xs cursor-pointer border transition-colors ${
                             isSelected
-                              ? 'bg-white border-slate-900 font-semibold text-slate-900 shadow-2xs'
-                              : 'border-transparent text-slate-600 hover:bg-white/80'
+                              ? 'bg-white dark:bg-slate-800 border-slate-900 dark:border-blue-500 font-semibold text-slate-900 dark:text-slate-100 shadow-2xs'
+                              : 'border-transparent text-slate-600 dark:text-slate-400 hover:bg-white/80 dark:hover:bg-slate-800/80'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -708,13 +710,18 @@ export const TaskModal: React.FC = () => {
                               type="checkbox"
                               checked={isSelected}
                               onChange={() => {}}
-                              className="rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+                              className="rounded border-slate-300 dark:border-slate-600 text-slate-900 focus:ring-slate-900"
                             />
                             <span>{cand.name}</span>
                           </div>
-                          <span className="text-[10px] text-slate-400 font-normal">
-                            {cand.type}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">
+                              {cand.email}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-normal">
+                              {cand.type}
+                            </span>
+                          </div>
                         </div>
                       );
                     })
@@ -722,6 +729,32 @@ export const TaskModal: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Calendar & Reminder Alerts Routing Banner */}
+            <div className="p-3 rounded-lg bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-semibold text-blue-900 dark:text-blue-200">
+                <Bell className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" />
+                <span>Automated Calendar Invitations & Reminder Routing</span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                Task milestones and 72-hour inactivity alerts will be automatically routed to:
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-0.5">
+                {(isCollaborative
+                  ? candidates.filter((c) => collaboratorIds.includes(c.id))
+                  : candidates.filter((c) => c.id === candidateId)
+                ).map((c) => (
+                  <span
+                    key={c.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white dark:bg-slate-800 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800 shadow-2xs font-mono"
+                  >
+                    <Mail className="w-2.5 h-2.5" />
+                    <span>{c.name}:</span>
+                    <span>{c.email}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Footer actions */}

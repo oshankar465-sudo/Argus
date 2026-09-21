@@ -86,23 +86,23 @@ export const EmailModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
         role="dialog"
         aria-modal="true"
-        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[90vh]"
+        className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[90vh]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50">
+        <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/50 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
               <Mail className="w-4 h-4" />
             </div>
             <div>
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 Click-to-Email Dispatcher
               </h3>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+              <p className="text-[10px] sm:text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1">
                 Compose or dispatch pre-configured emails to candidates
               </p>
             </div>
@@ -117,7 +117,7 @@ export const EmailModal: React.FC = () => {
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-4 text-xs">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-3.5 text-xs">
           {/* Quick Template Selector */}
           <div>
             <div className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1">
@@ -131,7 +131,7 @@ export const EmailModal: React.FC = () => {
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors cursor-pointer"
               >
                 <AlertTriangle className="w-3 h-3" />
-                <span>72h Stagnant Reminder</span>
+                <span>72h Stagnant</span>
               </button>
               <button
                 type="button"
@@ -139,7 +139,7 @@ export const EmailModal: React.FC = () => {
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800/60 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors cursor-pointer"
               >
                 <Calendar className="w-3 h-3" />
-                <span>Assignment Notice</span>
+                <span>Assignment</span>
               </button>
               <button
                 type="button"
@@ -147,7 +147,7 @@ export const EmailModal: React.FC = () => {
                 className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium bg-purple-50 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors cursor-pointer"
               >
                 <Clock className="w-3 h-3" />
-                <span>Deadline Follow-up</span>
+                <span>Deadline</span>
               </button>
             </div>
           </div>
@@ -184,7 +184,7 @@ export const EmailModal: React.FC = () => {
                 Message Body
               </label>
               <textarea
-                rows={6}
+                rows={5}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 className="w-full px-3 py-2 text-xs border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none font-sans leading-relaxed"
@@ -194,11 +194,11 @@ export const EmailModal: React.FC = () => {
         </div>
 
         {/* Footer Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-3.5 sm:px-6 sm:py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 shrink-0">
           <button
             type="button"
             onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg transition-colors cursor-pointer"
           >
             {isCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
             <span>{isCopied ? 'Copied!' : 'Copy Text'}</span>
@@ -208,7 +208,7 @@ export const EmailModal: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenGmail}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg shadow-2xs transition-colors cursor-pointer"
               title="Open draft directly in Gmail Web"
             >
               <ExternalLink className="w-3.5 h-3.5 text-red-500" />
@@ -218,7 +218,7 @@ export const EmailModal: React.FC = () => {
             <button
               type="button"
               onClick={handleOpenMailto}
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
+              className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors cursor-pointer"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send Email</span>

@@ -47,7 +47,7 @@
           "description": "ISO timestamp of creation"
         }
       },
-      "required": ["id", "name", "type", "createdAt"]
+      "required": ["id", "name", "type", "email", "createdAt"]
     }
   },
   "firestore": {
