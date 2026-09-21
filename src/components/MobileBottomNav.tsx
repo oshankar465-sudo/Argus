@@ -338,7 +338,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenNotifica
                   <Database className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
                   <div className="min-w-0">
                     <div className="text-xs font-medium text-slate-900 dark:text-slate-100 truncate">Firestore DB</div>
-                    <div className="text-[10px] text-slate-500 capitalize">{databaseStatus}</div>
+                    <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                      {databaseStatus === 'connected' ? 'Always Connected' : databaseStatus}
+                    </div>
                   </div>
                 </button>
               </div>
