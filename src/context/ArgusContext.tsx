@@ -40,6 +40,9 @@ import {
   dispatch72HourCalendarNotification,
   syncAllCandidateTasksAndAlerts,
   isAuthCancellation,
+  getGoogleCalendarWebUrl,
+  downloadCandidateIcsCalendar,
+  downloadSingleTaskIcsCalendar,
 } from '../lib/googleWorkspace';
 
 interface ResourceTarget {
@@ -84,6 +87,12 @@ interface ArgusContextType {
     hoursStagnant: number;
   }>;
 
+  // 1-Click Instant Calendar Web & .ics Export (Deployed-Safe)
+  getTaskGoogleCalendarWebUrl: (candidateId: string, taskId: string) => string;
+  openTaskInGoogleCalendarWeb: (candidateId: string, taskId: string) => void;
+  exportCandidateCalendarIcs: (candidateId: string) => void;
+  exportTaskCalendarIcs: (candidateId: string, taskId: string) => void;
+
   // Click-to-Email Modal
   isEmailModalOpen: boolean;
   setIsEmailModalOpen: (open: boolean) => void;
@@ -114,7 +123,11 @@ interface ArgusContextType {
     error?: string;
   }>;
   logoutCandidateSession: () => Promise<void>;
-  syncLoggedInCandidateTasks: () => Promise<{ syncedTasks: number; syncedSubtasks: number }>;
+  syncLoggedInCandidateTasks: (options?: { forceResync?: boolean }) => Promise<{
+    syncedTasks: number;
+    syncedSubtasks: number;
+    errors?: string[];
+  }>;
   openCandidatePortal: (candidateId?: string) => void;
 
   // Modals
@@ -973,21 +986,45 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   /**
    * Synchronizes the logged-in candidate's tasks to their Google Calendar and Google Tasks
    */
-  const syncLoggedInCandidateTasks = async (): Promise<{ syncedTasks: number; syncedSubtasks: number }> => {
+  const syncLoggedInCandidateTasks = async (options?: { forceResync?: boolean }): Promise<{
+    syncedTasks: number;
+    syncedSubtasks: number;
+    errors?: string[];
+  }> => {
     let token = getWorkspaceAccessToken();
     if (!token) {
       const loginRes = await loginCandidateWithGmail();
-      if (!loginRes.success) return { syncedTasks: 0, syncedSubtasks: 0 };
+      if (!loginRes.success) {
+        return {
+          syncedTasks: 0,
+          syncedSubtasks: 0,
+          errors: [
+            loginRes.error ||
+              (loginRes.cancelled
+                ? 'Sign-in cancelled'
+                : 'Google Workspace authentication required'),
+          ],
+        };
+      }
       token = getWorkspaceAccessToken();
     }
     if (!token || !loggedInCandidate) {
-      return { syncedTasks: 0, syncedSubtasks: 0 };
+      return {
+        syncedTasks: 0,
+        syncedSubtasks: 0,
+        errors: [
+          !token
+            ? 'No Google Workspace access token available. Please reconnect Gmail.'
+            : 'No candidate profile currently selected or logged in.',
+        ],
+      };
     }
 
     const syncRes = await syncAllCandidateTasksAndAlerts(
       token,
       loggedInCandidate,
-      candidates
+      candidates,
+      options
     );
 
     if (syncRes.updatedCandidate) {
@@ -1000,7 +1037,58 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return {
       syncedTasks: syncRes.syncedTasks,
       syncedSubtasks: syncRes.syncedSubtasks,
+      errors: syncRes.errors,
     };
+  };
+
+  /**
+   * Generates a 1-click Google Calendar Web template URL for a task
+   */
+  const getTaskGoogleCalendarWebUrl = (candidateId: string, taskId: string): string => {
+    const cand = candidates.find((c) => c.id === candidateId);
+    if (!cand) return '';
+    const task = cand.tasks.find((t) => t.id === taskId);
+    if (!task) return '';
+    return getGoogleCalendarWebUrl({
+      title: task.name,
+      description: task.description,
+      startDate: task.startDate,
+      endDate: task.endDate,
+      candidateName: cand.name,
+      attendeeEmails: cand.email ? [cand.email] : undefined,
+    });
+  };
+
+  /**
+   * Opens Google Calendar directly in browser with task pre-populated (works 100% after deployment)
+   */
+  const openTaskInGoogleCalendarWeb = (candidateId: string, taskId: string) => {
+    const url = getTaskGoogleCalendarWebUrl(candidateId, taskId);
+    if (url && typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  /**
+   * Downloads the complete schedule for a candidate as standard RFC 5545 .ics file
+   */
+  const exportCandidateCalendarIcs = (candidateId: string) => {
+    const cand = candidates.find((c) => c.id === candidateId);
+    if (cand) {
+      downloadCandidateIcsCalendar(cand);
+    }
+  };
+
+  /**
+   * Downloads a single task as standard .ics file
+   */
+  const exportTaskCalendarIcs = (candidateId: string, taskId: string) => {
+    const cand = candidates.find((c) => c.id === candidateId);
+    if (!cand) return;
+    const task = cand.tasks.find((t) => t.id === taskId);
+    if (task) {
+      downloadSingleTaskIcsCalendar(task, cand.name);
+    }
   };
 
   /**
@@ -2198,6 +2286,12 @@ export const ArgusProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         dispatch72HourNotification,
         simulate72HourInactivity,
         stagnant72hTasks,
+
+        // 1-Click Instant Calendar Web & .ics Export (Deployed-Safe)
+        getTaskGoogleCalendarWebUrl,
+        openTaskInGoogleCalendarWeb,
+        exportCandidateCalendarIcs,
+        exportTaskCalendarIcs,
 
         // Click-to-Email Modal
         isEmailModalOpen,

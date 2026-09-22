@@ -1,13 +1,15 @@
 import {
   getAuth,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
   User,
   signOut,
 } from 'firebase/auth';
 import { app } from './firebase';
-import { Task, Subtask } from '../types';
+import { Task, Subtask, Candidate } from '../types';
 
 export const auth = getAuth(app);
 
@@ -52,16 +54,56 @@ export const isPopupBlocked = (error: unknown): boolean => {
   return code === 'auth/popup-blocked' || message.includes('popup-blocked');
 };
 
+export const isUnauthorizedDomainError = (error: unknown): boolean => {
+  if (!error) return false;
+  const code = (error as { code?: string })?.code;
+  const message = (error as { message?: string })?.message || (typeof error === 'string' ? error : '');
+  return (
+    code === 'auth/unauthorized-domain' ||
+    message.includes('unauthorized-domain') ||
+    message.includes('authorized domain')
+  );
+};
+
+export const getCurrentDeploymentDomain = (): string => {
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.hostname;
+  }
+  return 'localhost';
+};
+
+export const checkRedirectResult = async (): Promise<{ user: User; accessToken: string } | null> => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) {
+      cachedAccessToken = credential.accessToken;
+      return { user: result.user, accessToken: cachedAccessToken };
+    }
+  } catch (err: unknown) {
+    console.warn('Redirect auth check warning:', err);
+  }
+  return null;
+};
+
 export const initWorkspaceAuth = (
   onAuthSuccess?: (user: User, token: string) => void,
   onAuthFailure?: () => void
 ) => {
+  // Check redirect result on load first
+  checkRedirectResult().then((res) => {
+    if (res && onAuthSuccess) {
+      onAuthSuccess(res.user, res.accessToken);
+    }
+  });
+
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
       if (cachedAccessToken) {
         if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
       } else if (!isSigningIn) {
-        cachedAccessToken = null;
+        // User logged in to Firebase but OAuth access token needs explicit interactive sign-in
         if (onAuthFailure) onAuthFailure();
       }
     } else {
@@ -87,12 +129,17 @@ export const signInWithGoogleWorkspace = async (): Promise<{
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: unknown) {
     if (isAuthCancellation(error)) {
-      // Expected user interaction when popup is closed without completing sign in
       return null;
+    }
+    if (isUnauthorizedDomainError(error)) {
+      const currentHost = getCurrentDeploymentDomain();
+      throw new Error(
+        `OAuth Domain Unauthorized: "${currentHost}" is not listed under Authorized Domains in Firebase Authentication. Add "${currentHost}" to Firebase Console -> Authentication -> Settings -> Authorized Domains, or use our 1-Click Google Calendar Web Sync which works immediately with zero domain configuration.`
+      );
     }
     if (isPopupBlocked(error)) {
       throw new Error(
-        'The sign-in popup was blocked by your browser. Please allow popups for this site and try again.'
+        'The sign-in popup was blocked by your browser. Please allow popups for this site or use redirect sign-in.'
       );
     }
     console.error('Google Workspace sign in error:', error);
@@ -100,6 +147,10 @@ export const signInWithGoogleWorkspace = async (): Promise<{
   } finally {
     isSigningIn = false;
   }
+};
+
+export const signInWithGoogleWorkspaceRedirect = async (): Promise<void> => {
+  await signInWithRedirect(auth, provider);
 };
 
 export const getWorkspaceAccessToken = (): string | null => {
@@ -116,9 +167,233 @@ export const signOutWorkspace = async (): Promise<void> => {
 };
 
 // Helper: Ensure standard YYYY-MM-DD format
-const getValidDateStr = (dateStr?: string): string => {
+export const getValidDateStr = (dateStr?: string): string => {
   if (dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
   return new Date().toISOString().split('T')[0];
+};
+
+/**
+ * Computes the day after a given YYYY-MM-DD date in UTC
+ */
+export const getNextDayStr = (dateStr: string): string => {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  date.setUTCDate(date.getUTCDate() + 1);
+  return date.toISOString().split('T')[0];
+};
+
+/**
+ * Google Calendar API requires all-day event end dates to be EXCLUSIVE.
+ * If event is on 2026-09-21, start.date = '2026-09-21' and end.date MUST be '2026-09-22'.
+ * When end.date <= start.date, Google Calendar API returns HTTP 400 Bad Request.
+ */
+export const getCalendarEndDateStr = (startDate?: string, endDate?: string): string => {
+  const start = getValidDateStr(startDate);
+  const end = getValidDateStr(endDate || startDate);
+  if (end <= start) {
+    return getNextDayStr(start);
+  }
+  // To make multi-day all-day event inclusive of the ending day in Google Calendar,
+  // the exclusive end date must be the subsequent day.
+  return getNextDayStr(end);
+};
+
+/**
+ * Generates an instant 1-click Google Calendar Web URL (works anywhere, no OAuth needed)
+ */
+export const getGoogleCalendarWebUrl = (data: {
+  title: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  candidateName?: string;
+  attendeeEmails?: string[];
+}): string => {
+  const start = getValidDateStr(data.startDate);
+  const end = getCalendarEndDateStr(data.startDate, data.endDate);
+
+  const startFormatted = start.replace(/-/g, '');
+  const endFormatted = end.replace(/-/g, '');
+
+  const title = `[GEOMETRA] ${data.title}${data.candidateName ? ` - ${data.candidateName}` : ''}`;
+  const details = [
+    data.description || 'Task assignment in GEOMETRA - ARGUS.',
+    data.candidateName ? `Candidate: ${data.candidateName}` : '',
+    data.attendeeEmails?.length ? `Alerted Team: ${data.attendeeEmails.join(', ')}` : '',
+    '72-Hour Status Tracking & Milestone Notifications enabled in GEOMETRA.',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title,
+    dates: `${startFormatted}/${endFormatted}`,
+    details,
+  });
+
+  if (data.attendeeEmails && data.attendeeEmails.length > 0) {
+    params.set('add', data.attendeeEmails.join(','));
+  }
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+};
+
+/**
+ * Formats date into standard iCalendar YYYYMMDD string
+ */
+const formatIcsDate = (dateStr: string): string => {
+  return dateStr.replace(/-/g, '');
+};
+
+/**
+ * Generates standard RFC 5545 iCalendar (.ics) string for any candidate schedule
+ */
+export const generateCandidateIcsCalendar = (candidate: Candidate): string => {
+  const nowStr = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const candidateName = candidate.name || 'Candidate';
+
+  const events: string[] = [];
+
+  (candidate.tasks || []).forEach((task) => {
+    const start = getValidDateStr(task.startDate);
+    const end = getCalendarEndDateStr(task.startDate, task.endDate);
+    const uid = `task-${task.id}-${candidate.id}@geometra.app`;
+    const summary = `[GEOMETRA] ${task.name} (${candidateName})`;
+    const description = `Candidate: ${candidateName}\\nStatus: ${task.status}\\n${
+      task.description ? task.description.replace(/\n/g, '\\n') : ''
+    }`;
+
+    events.push([
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${nowStr}`,
+      `DTSTART;VALUE=DATE:${formatIcsDate(start)}`,
+      `DTEND;VALUE=DATE:${formatIcsDate(end)}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description}`,
+      'STATUS:CONFIRMED',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT72H',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:72-Hour Status & Milestone Alert: ${task.name}`,
+      'END:VALARM',
+      'BEGIN:VALARM',
+      'TRIGGER:-PT24H',
+      'ACTION:DISPLAY',
+      `DESCRIPTION:24-Hour Deadline Reminder: ${task.name}`,
+      'END:VALARM',
+      'END:VEVENT',
+    ].join('\r\n'));
+
+    // Include subtasks if present
+    (task.subtasks || []).forEach((sub) => {
+      const subStart = getValidDateStr(sub.startDate || sub.endDate);
+      const subEnd = getCalendarEndDateStr(sub.startDate, sub.endDate);
+      const subUid = `subtask-${sub.id}-${task.id}@geometra.app`;
+      const subSummary = `[GEOMETRA Subtask] ${sub.name} - ${task.name} (${candidateName})`;
+
+      events.push([
+        'BEGIN:VEVENT',
+        `UID:${subUid}`,
+        `DTSTAMP:${nowStr}`,
+        `DTSTART;VALUE=DATE:${formatIcsDate(subStart)}`,
+        `DTEND;VALUE=DATE:${formatIcsDate(subEnd)}`,
+        `SUMMARY:${subSummary}`,
+        `DESCRIPTION:Parent Task: ${task.name}\\nStatus: ${sub.status}\\nDeadline Milestone: ${sub.endDate}`,
+        'STATUS:CONFIRMED',
+        'BEGIN:VALARM',
+        'TRIGGER:-PT72H',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:72-Hour Milestone Alert: ${sub.name}`,
+        'END:VALARM',
+        'END:VEVENT',
+      ].join('\r\n'));
+    });
+  });
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//GEOMETRA//ARGUS Candidate Milestones//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:GEOMETRA Schedule - ${candidateName}`,
+    ...events,
+    'END:VCALENDAR',
+  ].join('\r\n');
+};
+
+/**
+ * Downloads candidate schedule as a .ics file
+ */
+export const downloadCandidateIcsCalendar = (candidate: Candidate): void => {
+  const icsData = generateCandidateIcsCalendar(candidate);
+  const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${candidate.name.replace(/\s+/g, '_')}_schedule.ics`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
+
+/**
+ * Downloads a single task or subtask as a .ics file
+ */
+export const downloadSingleTaskIcsCalendar = (
+  item: { name: string; description?: string; startDate?: string; endDate?: string; status?: string; priority?: string },
+  candidateName: string
+): void => {
+  const nowStr = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const start = getValidDateStr(item.startDate);
+  const end = getCalendarEndDateStr(item.startDate, item.endDate);
+  const uid = `single-task-${Date.now()}@geometra.app`;
+  const summary = `[GEOMETRA] ${item.name} (${candidateName})`;
+  const description = `Candidate: ${candidateName}\\nStatus: ${item.status || 'Active'}\\n${
+    item.description ? item.description.replace(/\n/g, '\\n') : ''
+  }`;
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//GEOMETRA//ARGUS Task//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:GEOMETRA - ${item.name}`,
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTAMP:${nowStr}`,
+    `DTSTART;VALUE=DATE:${formatIcsDate(start)}`,
+    `DTEND;VALUE=DATE:${formatIcsDate(end)}`,
+    `SUMMARY:${summary}`,
+    `DESCRIPTION:${description}`,
+    'STATUS:CONFIRMED',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT72H',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:72-Hour Status Alert: ${item.name}`,
+    'END:VALARM',
+    'BEGIN:VALARM',
+    'TRIGGER:-PT24H',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:24-Hour Deadline Reminder: ${item.name}`,
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `${item.name.replace(/[^a-zA-Z0-9]/g, '_')}.ics`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
 
 /**
@@ -137,8 +412,7 @@ export async function createGoogleCalendarEvent(
   }
 ): Promise<{ eventId: string; htmlLink: string }> {
   const startDate = getValidDateStr(data.startDate);
-  // End date for all-day events in Google Calendar is exclusive, so add 1 day if equal
-  const endDate = getValidDateStr(data.endDate || data.startDate);
+  const endDate = getCalendarEndDateStr(data.startDate, data.endDate);
 
   const assignees = data.assigneeNames && data.assigneeNames.length > 0
     ? data.assigneeNames.join(', ')
@@ -175,7 +449,7 @@ export async function createGoogleCalendarEvent(
     },
   };
 
-  const response = await fetch(
+  let response = await fetch(
     'https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all',
     {
       method: 'POST',
@@ -186,6 +460,24 @@ export async function createGoogleCalendarEvent(
       body: JSON.stringify(eventPayload),
     }
   );
+
+  // If sendUpdates=all failed (e.g. attendee email permissions), retry without sendUpdates
+  if (!response.ok && (response.status === 400 || response.status === 403)) {
+    response = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...eventPayload,
+          attendees: undefined,
+        }),
+      }
+    );
+  }
 
   if (!response.ok) {
     const errJson = await response.json().catch(() => ({}));
@@ -328,6 +620,7 @@ export async function dispatch72HourCalendarNotification(
   }
 ): Promise<{ eventId: string; htmlLink: string }> {
   const todayStr = new Date().toISOString().split('T')[0];
+  const nextDayStr = getNextDayStr(todayStr);
   const daysStagnant = Math.floor(data.stagnantHours / 24);
 
   // Consolidate recipient emails
@@ -350,7 +643,7 @@ export async function dispatch72HourCalendarNotification(
       date: todayStr,
     },
     end: {
-      date: todayStr,
+      date: nextDayStr,
     },
     attendees: validAttendees.length > 0 ? validAttendees : undefined,
     reminders: {
@@ -364,7 +657,7 @@ export async function dispatch72HourCalendarNotification(
     },
   };
 
-  const response = await fetch(
+  let response = await fetch(
     'https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all',
     {
       method: 'POST',
@@ -375,6 +668,23 @@ export async function dispatch72HourCalendarNotification(
       body: JSON.stringify(eventPayload),
     }
   );
+
+  if (!response.ok && (response.status === 400 || response.status === 403)) {
+    response = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...eventPayload,
+          attendees: undefined,
+        }),
+      }
+    );
+  }
 
   if (!response.ok) {
     const errJson = await response.json().catch(() => ({}));
@@ -405,7 +715,7 @@ export async function createGoogleSubtaskCalendarEvent(
   }
 ): Promise<{ eventId: string; htmlLink: string }> {
   const startDate = getValidDateStr(data.startDate || data.endDate);
-  const endDate = getValidDateStr(data.endDate);
+  const endDate = getCalendarEndDateStr(data.startDate, data.endDate);
 
   const team = data.collaboratorNames && data.collaboratorNames.length > 0
     ? data.collaboratorNames.join(', ')
@@ -439,7 +749,7 @@ export async function createGoogleSubtaskCalendarEvent(
     },
   };
 
-  const response = await fetch(
+  let response = await fetch(
     'https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all',
     {
       method: 'POST',
@@ -450,6 +760,23 @@ export async function createGoogleSubtaskCalendarEvent(
       body: JSON.stringify(eventPayload),
     }
   );
+
+  if (!response.ok && (response.status === 400 || response.status === 403)) {
+    response = await fetch(
+      'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...eventPayload,
+          attendees: undefined,
+        }),
+      }
+    );
+  }
 
   if (!response.ok) {
     const errJson = await response.json().catch(() => ({}));
@@ -470,7 +797,8 @@ export async function createGoogleSubtaskCalendarEvent(
 export async function syncAllCandidateTasksAndAlerts(
   accessToken: string,
   candidate: Task['candidateId'] extends string ? import('../types').Candidate : any,
-  allCandidates: import('../types').Candidate[]
+  allCandidates: import('../types').Candidate[],
+  options?: { forceResync?: boolean }
 ): Promise<{
   updatedCandidate: import('../types').Candidate;
   syncedTasks: number;
@@ -480,6 +808,7 @@ export async function syncAllCandidateTasksAndAlerts(
   let syncedTasks = 0;
   let syncedSubtasks = 0;
   const errors: string[] = [];
+  const forceResync = Boolean(options?.forceResync);
 
   const candidateMap = new Map<string, import('../types').Candidate>(
     allCandidates.map((c) => [c.id, c])
@@ -499,8 +828,8 @@ export async function syncAllCandidateTasksAndAlerts(
         });
       }
 
-      // 1. Sync parent task to Google Calendar if not yet synced
-      if (!updatedTask.calendarEventId) {
+      // 1. Sync parent task to Google Calendar if not yet synced or forceResync requested
+      if (!updatedTask.calendarEventId || forceResync) {
         try {
           const calRes = await createGoogleCalendarEvent(accessToken, {
             title: task.name,
@@ -523,7 +852,7 @@ export async function syncAllCandidateTasksAndAlerts(
       }
 
       // 2. Sync parent task to Google Tasks if not yet synced
-      if (!updatedTask.googleTaskId) {
+      if (!updatedTask.googleTaskId || forceResync) {
         try {
           const taskRes = await createGoogleTaskItem(accessToken, {
             title: task.name,
@@ -541,7 +870,7 @@ export async function syncAllCandidateTasksAndAlerts(
       const updatedSubtasks = await Promise.all(
         (task.subtasks || []).map(async (sub) => {
           let updatedSub = { ...sub };
-          if (!updatedSub.calendarEventId && sub.endDate) {
+          if ((!updatedSub.calendarEventId || forceResync) && sub.endDate) {
             try {
               const subEmails: string[] = [];
               if (candidate.email) subEmails.push(candidate.email);

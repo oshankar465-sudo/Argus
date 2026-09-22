@@ -35,6 +35,7 @@ import {
   Loader2,
   LogOut,
   CheckCircle2,
+  Download,
 } from 'lucide-react';
 
 export const CandidateProfile: React.FC = () => {
@@ -70,6 +71,10 @@ export const CandidateProfile: React.FC = () => {
     verifyMainDatabaseSync,
     databaseStatus,
     dbSyncCheckResult,
+    exportCandidateCalendarIcs,
+    exportTaskCalendarIcs,
+    openTaskInGoogleCalendarWeb,
+    getTaskGoogleCalendarWebUrl,
   } = useArgus();
 
   const candidate = candidates.find((c) => c.id === selectedCandidateId);
@@ -241,8 +246,20 @@ export const CandidateProfile: React.FC = () => {
     try {
       setIsSyncingTasks(true);
       setSyncFeedback(null);
-      const res = await syncLoggedInCandidateTasks();
-      setSyncFeedback(`Successfully synchronized ${res.syncedTasks} task(s) and ${res.syncedSubtasks} subtask milestone(s) to personal Google Calendar & Google Tasks alerts.`);
+      const res = await syncLoggedInCandidateTasks({ forceResync: true });
+      if (res.syncedTasks > 0 || res.syncedSubtasks > 0) {
+        setSyncFeedback(
+          `Successfully synchronized ${res.syncedTasks} task(s) and ${res.syncedSubtasks} subtask milestone(s) to personal Google Calendar & Google Tasks alerts.`
+        );
+      } else if (res.errors && res.errors.length > 0) {
+        setSyncFeedback(
+          `Calendar Sync notice: ${res.errors.join('; ')}. If using a deployed custom domain (e.g. Netlify), you can also click "Export .ics Calendar" or use the 1-click Calendar button on each task!`
+        );
+      } else {
+        setSyncFeedback(
+          'All tasks and milestone deadlines are currently synchronized with your Google Calendar.'
+        );
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Sync operation encountered an issue.';
       setSyncFeedback(msg);
@@ -477,6 +494,17 @@ export const CandidateProfile: React.FC = () => {
                       <span>Sync Tasks to Calendar & Alerts</span>
                     </>
                   )}
+                </button>
+
+                <button
+                  type="button"
+                  id="candidate-export-ics-btn"
+                  onClick={() => exportCandidateCalendarIcs(candidate.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 rounded-lg shadow-2xs transition-all cursor-pointer min-h-[40px]"
+                  title="Download complete schedule as standard .ics file (compatible with Google Calendar, Apple Calendar, Outlook, and mobile devices)"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-600 dark:text-slate-300" />
+                  <span>Export .ics Calendar</span>
                 </button>
 
                 <button
@@ -803,22 +831,31 @@ export const CandidateProfile: React.FC = () => {
                           interactive={true}
                         />
 
-                        {/* Google Calendar Sync Button */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            syncTaskToGoogleCalendar(candidate.id, task.id);
-                          }}
-                          className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                            task.calendarEventId
-                              ? 'text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800'
-                              : 'text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
-                          }`}
-                          title={task.calendarEventId ? 'Resync with Google Calendar & Tasks' : 'Add to Google Calendar & Tasks'}
-                        >
-                          <Calendar className="w-3.5 h-3.5" />
-                        </button>
+                        {/* Google Calendar Sync & Direct 1-Click Access */}
+                        {task.calendarHtmlLink ? (
+                          <a
+                            href={task.calendarHtmlLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1.5 rounded-md text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Open scheduled event in Google Calendar"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openTaskInGoogleCalendarWeb(candidate.id, task.id);
+                            }}
+                            className="p-1.5 rounded-md text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Add directly to Google Calendar (1-Click Web Sync)"
+                          >
+                            <Calendar className="w-3.5 h-3.5" />
+                          </button>
+                        )}
 
                         {/* Download Task Dossier PDF including candidates */}
                         <button

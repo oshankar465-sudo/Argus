@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useArgus } from '../context/ArgusContext';
+import { isUnauthorizedDomainError, getCurrentDeploymentDomain } from '../lib/googleWorkspace';
 import {
   Mail,
   Calendar,
@@ -17,6 +18,8 @@ import {
   RefreshCw,
   ArrowRight,
   Clock,
+  Download,
+  Copy,
 } from 'lucide-react';
 
 export const CandidateLoginModal: React.FC = () => {
@@ -296,12 +299,43 @@ export const CandidateLoginModal: React.FC = () => {
           )}
 
           {errorMessage && (
-            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
-              <div className="space-y-0.5">
-                <span className="font-semibold block">Authentication Notice</span>
-                <span>{errorMessage}</span>
+            <div className="space-y-2">
+              <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-300 flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-0.5 flex-1">
+                  <span className="font-semibold block">Authentication Notice</span>
+                  <span className="leading-relaxed">{errorMessage}</span>
+                </div>
               </div>
+
+              {/* Special Guidance if domain is not authorized on Netlify / custom domain */}
+              {isUnauthorizedDomainError(errorMessage) && (
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+                  <div className="font-semibold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Netlify / Deployed Domain Configuration Step</span>
+                  </div>
+                  <p className="leading-relaxed">
+                    Firebase OAuth requires all deployed domains (such as your Netlify site) to be added to Authorized Domains for security.
+                  </p>
+                  <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-amber-100/70 dark:bg-amber-900/40 border border-amber-300 dark:border-amber-700 font-mono text-[11px]">
+                    <span className="truncate">{getCurrentDeploymentDomain()}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(getCurrentDeploymentDomain());
+                        alert(`Copied "${getCurrentDeploymentDomain()}" to clipboard!`);
+                      }}
+                      className="px-2 py-0.5 text-[10px] font-sans font-medium bg-amber-200 dark:bg-amber-800 hover:bg-amber-300 dark:hover:bg-amber-700 rounded transition-colors cursor-pointer shrink-0"
+                    >
+                      Copy Domain
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-300">
+                    Go to <strong>Firebase Console &gt; Authentication &gt; Settings &gt; Authorized Domains</strong> and click <strong>Add Domain</strong>.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
